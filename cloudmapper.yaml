@@ -1,0 +1,207 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: cloudmapper-deployment
+  labels:
+    app: cloudmapper
+spec:
+  # only 1 replica, becuase if we want consistency, we should use stateful set in k8
+  # and not deployment for databases.
+  replicas: 1
+  selector:
+    #Defined that all the pods that match this label belong to this deployment
+    matchLabels:
+      app: cloudmapper
+  template:
+    metadata:
+      labels:
+        # We can use any key, but the good practice in k8 is to use app key for apps.
+        app: cloudmapper
+    spec:
+      containers:
+      # Here is where I define which image and which port. I can choose from dockerhub as repo.
+      - name: cloudmapper
+        # image: httpd
+        # image: ivansanchezvera/cloudmapper:2.10.0
+        # image: docker.io/ivansanchezvera/cloudmapper
+        image: ivansanchezvera/cloudmapper
+        
+        # image: ivansanchezvera/cloudmapper:2.10.0
+        # image: ivansanchezvera/cloudmapper#:2.10.0
+        # docker pull ivansanchezvera/cloudmapper:2.10.0
+        # image: cloudkats/cloudmapper:2.10.0
+        # image: cloudkats/cloudmapper
+        
+        # image: cloudkats/cloudmapper
+        # tag: "2.10.0"
+        imagePullPolicy: IfNotPresent
+        # imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+        # I wanted to try to use commands here but it seems helm is the way to go:
+        # https://stackoverflow.com/questions/48296082/how-to-set-dynamic-values-with-kubernetes-yaml-file
+        # command: [python cloudmapper.py collect --account my_account]
+        env:
+        - name: AWS_DEFAULT_REGION
+          valueFrom:
+            configMapKeyRef:
+              name: cloudmapper-config
+              key: aws-region
+        # - name: AWS_ACCESS_KEY_ID
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: cloudmapper-secrets
+        #       key: aws-key
+        # - name: AWS_SECRET_ACCESS_KEY
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: cloudmapper-secrets
+        #       key: aws-secrets
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            configMapKeyRef:
+              name: cloudmapper-config
+              key: aws-key
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            configMapKeyRef:
+              name: cloudmapper-config
+              key: aws-secrets
+        
+        
+        
+        # - name: USER_PWD
+        #   valueFrom:
+        #     secretKeyRef:
+        #       name: mongo-secret
+        #       key: mongo-password
+        # - name: DB_URL
+        #   valueFrom:
+        #     configMapKeyRef:
+        #       name: mongo-config
+        #       key: mongo-url
+        # command: ["printenv"]
+        # args: ["HOSTNAME", "KUBERNETES_PORT"]
+        
+        
+        command: ["echo"]
+        args: ["Testing args"]
+
+        command: ["echo"]
+        args: ["$AWS_ACCESS_KEY_ID"]
+
+        command: ["echo"]
+        args: ["$AWS_SECRET_ACCESS_KEY"]
+
+        command: ["/bin/sh","-c"]
+        # args: ["cat config.json.demo; aws --version; python cloudmapper.py prepare --config config.json.demo --account demo; echo 'preparation concluded'; python cloudmapper.py report --config config.json.demo --account demo; echo 'reporting concluded'; python cloudmapper.py webserver"]
+        # args: ["cat config.json; aws --version; python cloudmapper.py prepare --config config.json --account ivan.sanchez@flugel.it; echo 'preparation concluded'; python cloudmapper.py report --config config.json --account ivan.sanchez@flugel.it; echo 'reporting concluded'; python cloudmapper.py webserver"]
+        
+        # args: ["echo $AWS_ACCESS_KEY_ID; echo $AWS_SECRET_ACCESS_KEY; echo 'checking aws caller id'; aws sts get-caller-identity; cat config.json; aws --version; python cloudmapper.py prepare --config config.json --account ivan.sanchez@flugel.it; echo 'preparation concluded'; python cloudmapper.py collect --account ivan.sanchez@flugel.it; echo 'collecting concluded'; python cloudmapper.py report --config config.json --account ivan.sanchez@flugel.it; echo 'reporting concluded'; python cloudmapper.py webserver"]
+
+
+        args:
+          - echo 'credential section';
+            echo $AWS_ACCESS_KEY_ID; 
+            echo $AWS_SECRET_ACCESS_KEY;
+            echo $AWS_DEFAULT_REGION;
+            date;
+            echo " ";
+            echo 'describing instances'; 
+            aws ec2 describe-instances;
+            echo 'checking aws caller id';
+            aws sts get-caller-identity;
+            cat config.json;
+            echo " ";
+            aws --version;
+            echo " "; 
+            echo "Installing curl";
+            apt-get install -y curl;
+            echo " "; 
+            echo "*****now starting with cloudmapper*****";
+            python cloudmapper.py configure --config-file config.json;
+            echo 'configuration concluded';
+            echo " ";
+            echo " ";
+            python cloudmapper.py collect --account ivan.sanchez@flugel.it; 
+            echo 'collecting concluded';
+            echo " ";
+            echo " ";
+            python cloudmapper.py report --config config.json --account ivan.sanchez@flugel.it; 
+            echo 'reporting concluded';
+            echo " ";
+            echo " ";
+            python cloudmapper.py prepare --config config.json --account ivan.sanchez@flugel.it; 
+            echo 'preparation concluded';
+            echo " ";
+            echo " ";
+            echo "Just about to start webserver";
+            python cloudmapper.py webserver --public;
+
+            #python cloudmapper.py configure add-account --config-file config.json;
+
+        # args:
+        #   - echo 'installing ntp';
+        #     apt -y install ntp;
+        #     echo 'enabling ntp';
+        #     systemctl enable ntp;
+        #     echo 'starting ntp';
+        #     systemctl start ntp;
+        #     echo 'end of ntp';
+        #     echo '';
+        #     echo 'credential section';
+        #     echo $AWS_ACCESS_KEY_ID; 
+        #     echo $AWS_SECRET_ACCESS_KEY;
+        #     echo $AWS_DEFAULT_REGION;
+        #     date;
+        #     export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID;
+        #     export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY;
+        #     echo " ";
+        #     echo 'describing instances'; 
+        #     aws ec2 describe-instances;
+        #     echo 'checking aws caller id'; 
+        #     aws sts get-caller-identity; 
+        #     cat config.json; 
+        #     aws --version; 
+        #     python cloudmapper.py prepare --config config.json --account ivan.sanchez@flugel.it; 
+        #     echo 'preparation concluded'; 
+        #     python cloudmapper.py collect --account ivan.sanchez@flugel.it; 
+        #     echo 'collecting concluded'; 
+        #     python cloudmapper.py report --config config.json --account ivan.sanchez@flugel.it; 
+        #     echo 'reporting concluded'; 
+        #     python cloudmapper.py webserver;
+            
+            # aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID";
+
+
+
+        # command: [python cloudmapper.py prepare --config config.json.demo --account demo]
+        # command: [python cloudmapper.py report --config config.json.demo --account demo]
+        # command: [python cloudmapper.py webserver]
+
+#Triple dash if for separating sections, standard yaml syntax
+---
+apiVersion: v1
+kind: Service
+metadata:
+  #This is the name of the endpoint, we refere to it in mongo-config.yaml file.
+  name: cloudmapper-service
+spec:
+  # To make it external we need to change the type to NodePort (the default type is ClusterIP)
+  type: NodePort
+  # We need selector in service cause service need to forward requests to their respective endpoint pods.
+  # How does it knows which pods belong to it, and which ones it should forward the request to? 
+  # The selector value should match the value set on the deployment section.
+  selector:
+    app: cloudmapper
+  ports:
+    - protocol: TCP
+      # port is the exposed service port, where the request initially arrive.
+      # check this for more info: https://youtu.be/s_o8dwzRlu4?t=3282
+      # This could be any port, but it is suggested that we use the same as targetPort for simplicity's sake
+      port: 8000
+      # targetPort is the port of the containerPort defined in development section
+      # TargetPort tells the service to which port of the pod to forward the request to
+      targetPort: 8000
+      # We need to set a NodePort to externalize our service (it ranges from 30000 to 32767 )
+      nodePort: 30200
